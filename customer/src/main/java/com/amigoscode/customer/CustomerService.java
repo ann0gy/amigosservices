@@ -1,5 +1,6 @@
 package com.amigoscode.customer;
 
+import com.amigoscode.amqp.RabbitMQMessageProducer;
 import com.amigoscode.clients.fraud.FraudCheckResponse;
 import com.amigoscode.clients.fraud.FraudClient;
 import com.amigoscode.clients.notification.NotificationClient;
@@ -14,9 +15,11 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     //    private final RestTemplate restTemplate;
-    private FraudClient fraudClient;
+    private final FraudClient fraudClient;
 
-    private NotificationClient notificationClient;
+//    private final NotificationClient notificationClient;
+
+    private final RabbitMQMessageProducer rabbitMQMessageProducer;
 
     public void registerCustomer(CustomerRegistrationRequest request) {
         Customer customer = Customer.builder()
@@ -41,12 +44,18 @@ public class CustomerService {
         }
 
         // todo: send notification
-        notificationClient.sendNotification(
-                new NotificationRequest(
-                        customer.getId(),
-                        customer.getEmail(),
-                        String.format("Hi %s, welcome to Amigoscode...", customer.getFirstName())
-                )
+        NotificationRequest notificationRequest = new NotificationRequest(
+                customer.getId(),
+                customer.getEmail(),
+                String.format("Hi %s, welcome to Amigoscode...", customer.getFirstName())
+        );
+//        notificationClient.sendNotification(
+//                notificationRequest
+//        );
+        rabbitMQMessageProducer.publish(
+                notificationRequest,
+                "internal.exchange",
+                "internal.notification.routing-key"
         );
     }
 }
